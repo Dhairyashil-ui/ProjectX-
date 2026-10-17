@@ -109,7 +109,7 @@ export default function TiltedPipeShowcase({ repo = 'facebook/react', onOpenModa
 
   if (viewMode === 'timeline') {
     return (
-      <div className="apple-stage-wrapper animate-fade-in">
+      <div className="apple-stage-wrapper animate-fade-in" data-lenis-prevent="true">
         <TimeTravelTimeline 
           repo={repo} 
           onBack={() => {
@@ -123,7 +123,7 @@ export default function TiltedPipeShowcase({ repo = 'facebook/react', onOpenModa
 
   if (viewMode === 'collaborators') {
     return (
-      <div className="apple-stage-wrapper animate-fade-in">
+      <div className="apple-stage-wrapper animate-fade-in" data-lenis-prevent="true">
         <ExploreCollaborators 
           repo={repo} 
           onBack={() => {
@@ -137,7 +137,7 @@ export default function TiltedPipeShowcase({ repo = 'facebook/react', onOpenModa
 
   if (viewMode === 'code') {
     return (
-      <div className="apple-stage-wrapper animate-fade-in">
+      <div className="apple-stage-wrapper animate-fade-in" data-lenis-prevent="true">
         <ExploreCode 
           repo={repo} 
           onBack={() => {
@@ -151,7 +151,7 @@ export default function TiltedPipeShowcase({ repo = 'facebook/react', onOpenModa
 
   if (viewMode === 'ai') {
     return (
-      <div className="apple-stage-wrapper animate-fade-in">
+      <div className="apple-stage-wrapper animate-fade-in" data-lenis-prevent="true">
         <AskTheRepository 
           repo={repo} 
           onBack={() => {

@@ -453,7 +453,7 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
             TAB 1: DIRECTORY ATTRIBUTION & KNOWLEDGE CONCENTRATION
             ============================================================== */}
         {activeTab === 'directories' && (
-          <div className="collab-tab-content animate-fade-in">
+          <div className="collab-tab-content animate-fade-in" data-lenis-prevent="true">
             <div className="directory-split-layout">
               
               {/* Left Column: Directories List */}
@@ -463,7 +463,7 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
                   <span className="sidebar-hint">Select to inspect contributors</span>
                 </div>
 
-                <div className="directory-items-scroll">
+                <div className="directory-items-scroll" data-lenis-prevent="true">
                   {displayedDirectories.length === 0 ? (
                     <div className="empty-filter-state p-4 text-center">
                       <i className="bi bi-folder-x text-muted" style={{ fontSize: '28px' }}></i>
@@ -523,7 +523,7 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
               </div>
 
               {/* Right Column: Directory Detail Inspector */}
-              <div className="directory-detail-main">
+              <div className="directory-detail-main" data-lenis-prevent="true">
                 {activeDirectoryData ? (
                   <div className="active-dir-card">
                     {/* Active Directory Title & Header */}
@@ -738,7 +738,7 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
             TAB 2: ACTIVITY TIMELINE & EVOLUTION
             ============================================================== */}
         {activeTab === 'activity' && (
-          <div className="collab-tab-content animate-fade-in">
+          <div className="collab-tab-scroll-area animate-fade-in" data-lenis-prevent="true">
             {/* Time Grouping Selector */}
             <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
               <div>
@@ -850,7 +850,7 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
             TAB 3: CONTRIBUTOR-DIRECTORY MATRIX
             ============================================================== */}
         {activeTab === 'matrix' && (
-          <div className="collab-tab-content animate-fade-in">
+          <div className="collab-tab-scroll-area animate-fade-in" data-lenis-prevent="true">
             <div className="mb-4">
               <h4 className="section-sub-title mb-1">
                 <i className="bi bi-grid-3x3-gap me-2"></i>

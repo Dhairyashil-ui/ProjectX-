@@ -10079,11 +10079,36 @@ body.mini-screen-locked, html.mini-screen-locked {
   box-sizing: border-box;
 }
 
+.collaborator-viewport-stage .collab-tab-content {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.collaborator-viewport-stage .collab-tab-scroll-area {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 6px 16px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
 .collaborator-viewport-stage .directory-split-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 16px;
   height: 100%;
+  max-height: 100%;
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
@@ -10108,6 +10133,9 @@ body.mini-screen-locked, html.mini-screen-locked {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .collaborator-viewport-stage .directory-detail-main {
@@ -10117,7 +10145,57 @@ body.mini-screen-locked, html.mini-screen-locked {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Apple-Grade Custom Scrollbar Styling */
+.collaborator-viewport-stage .directory-detail-main::-webkit-scrollbar,
+.collaborator-viewport-stage .directory-items-scroll::-webkit-scrollbar,
+.collaborator-viewport-stage .collab-tab-scroll-area::-webkit-scrollbar,
+.code-viewport-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.collaborator-viewport-stage .directory-detail-main::-webkit-scrollbar-track,
+.collaborator-viewport-stage .directory-items-scroll::-webkit-scrollbar-track,
+.collaborator-viewport-stage .collab-tab-scroll-area::-webkit-scrollbar-track,
+.code-viewport-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.collaborator-viewport-stage .directory-detail-main::-webkit-scrollbar-thumb,
+.collaborator-viewport-stage .directory-items-scroll::-webkit-scrollbar-thumb,
+.collaborator-viewport-stage .collab-tab-scroll-area::-webkit-scrollbar-thumb,
+.code-viewport-scroll-area::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.collaborator-viewport-stage .directory-detail-main::-webkit-scrollbar-thumb:hover,
+.collaborator-viewport-stage .directory-items-scroll::-webkit-scrollbar-thumb:hover,
+.collaborator-viewport-stage .collab-tab-scroll-area::-webkit-scrollbar-thumb:hover,
+.code-viewport-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (max-height: 720px) {
+  .apple-stage-wrapper {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .collaborator-viewport-stage {
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 992px) {
+  .collaborator-viewport-stage .directory-split-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 240px 1fr;
+  }
 }
 
 .code-viewport-header,
