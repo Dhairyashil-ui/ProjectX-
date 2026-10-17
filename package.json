@@ -1,0 +1,30 @@
+{
+  "name": "gitstory-ai",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node tests/repoValidation.test.mjs && node tests/collaboratorAnalytics.test.mjs && node tests/coChangeAnalytics.test.mjs"
+  },
+  "allowScripts": {
+    "esbuild": true
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "framer-motion": "^14.1.0",
+    "lenis": "^1.3.26",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}
