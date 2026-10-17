@@ -464,6 +464,25 @@ export const githubApi = {
   },
 
   /**
+   * Latest commit on default branch
+   */
+  async getLatestCommit(owner, repo) {
+    const commits = await this.getCommits(owner, repo, 1, 1);
+    if (Array.isArray(commits) && commits.length > 0) {
+      return commits[0];
+    }
+    return null;
+  },
+
+  /**
+   * Recent commits with specified count limit
+   */
+  async getRecentCommits(owner, repo, limit = 10) {
+    const commits = await this.getCommits(owner, repo, limit, 1);
+    return Array.isArray(commits) ? commits : [];
+  },
+
+  /**
    * Commit details (immutable: safe to cache permanently)
    */
   async getCommitDetails(owner, repo, sha) {

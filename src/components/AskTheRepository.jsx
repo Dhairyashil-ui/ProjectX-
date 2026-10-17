@@ -541,12 +541,16 @@ export default function AskTheRepository({ repo = 'facebook/react', onBack }) {
             )}
 
             <div className="d-flex align-items-center gap-2">
-              <div className="ai-header-gem">
-                <i className="bi bi-stars"></i>
+              <div className="d-flex align-items-center gap-2">
+                <img 
+                  src="/gitstory-logo.png" 
+                  alt="GitStory" 
+                  className="ai-official-logo" 
+                />
+                <span className="ai-brand-pill">AI</span>
               </div>
               <div>
                 <div className="d-flex align-items-center gap-2 flex-wrap">
-                  <h2 className="ai-header-title mb-0">GitStory AI</h2>
                   <span className="ai-model-badge">
                     <span className="model-pulse-dot"></span>
                     {healthStatus.model || 'qwen/qwen3.8-27b'}
@@ -733,7 +737,7 @@ export default function AskTheRepository({ repo = 'facebook/react', onBack }) {
                             </>
                           ) : (
                             <>
-                              <i className="bi bi-robot text-purple me-1"></i>
+                              <img src="/gitstory-logo.png" alt="GitStory" className="ai-message-avatar-logo me-1" />
                               GitStory AI • {msg.model || healthStatus.model || 'qwen/qwen3.8-27b'}
                             </>
                           )}
@@ -807,7 +811,7 @@ export default function AskTheRepository({ repo = 'facebook/react', onBack }) {
                     <div className="message-bubble-wrapper streaming-bubble">
                       <div className="message-meta-strip">
                         <span className="message-author">
-                          <i className="bi bi-robot text-purple me-1"></i>
+                          <img src="/gitstory-logo.png" alt="GitStory" className="ai-message-avatar-logo me-1" />
                           GitStory AI (Streaming from Groq LPU...)
                         </span>
                         <span className="streaming-pulse-indicator"></span>

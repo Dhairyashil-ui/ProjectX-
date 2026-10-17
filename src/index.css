@@ -10706,6 +10706,37 @@ body.mini-screen-locked, html.mini-screen-locked {
   transform: translateX(-1px);
 }
 
+.ai-official-logo {
+  height: 28px;
+  width: auto;
+  max-width: 130px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08));
+}
+
+.ai-brand-pill {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+  display: inline-block;
+  line-height: 1.25;
+}
+
+.ai-message-avatar-logo {
+  height: 18px;
+  width: auto;
+  max-width: 70px;
+  object-fit: contain;
+  vertical-align: middle;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08));
+}
+
 .ai-header-gem {
   width: 32px;
   height: 32px;
@@ -11100,20 +11131,29 @@ body.mini-screen-locked, html.mini-screen-locked {
 }
 
 .ai-error-alert {
-  padding: 7px 12px;
-  background: #fef2f2;
+  padding: 8px 14px;
+  background: rgba(254, 242, 242, 0.95);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid #fecaca;
   font-size: 12px;
+  font-weight: 500;
   color: #b91c1c;
   flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.06);
 }
 .btn-close-error {
-  background: none;
-  border: none;
+  background: rgba(185, 28, 28, 0.08);
+  border: 1px solid rgba(185, 28, 28, 0.2);
   color: #b91c1c;
   cursor: pointer;
-  padding: 0;
-  font-size: 12px;
+  padding: 2px 6px;
+  font-size: 11px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.btn-close-error:hover {
+  background: #b91c1c;
+  color: #ffffff;
 }
 
 /* Chat Messages Container */

@@ -147,6 +147,23 @@ await testAsync('executes batch tasks with maximum concurrency limit of 4', asyn
   assert.ok(maxObservedActive <= 4, `Max concurrency (${maxObservedActive}) must not exceed limit 4`);
 });
 
+// 6. Latest and Recent Commits APIs
+console.log('\n6. Latest & Recent Commits API:');
+await testAsync('githubApi.getLatestCommit is a function and returns latest commit object', async () => {
+  assert.equal(typeof githubApi.getLatestCommit, 'function');
+  const latest = await githubApi.getLatestCommit('facebook', 'react');
+  assert.ok(latest);
+  assert.ok(latest.sha);
+  assert.ok(latest.commit);
+});
+
+await testAsync('githubApi.getRecentCommits is a function and returns limited array of commits', async () => {
+  assert.equal(typeof githubApi.getRecentCommits, 'function');
+  const recent = await githubApi.getRecentCommits('facebook', 'react', 3);
+  assert.ok(Array.isArray(recent));
+  assert.ok(recent.length <= 3);
+});
+
 console.log('\n========================================');
 console.log(`GitHub Auth & Cache Tests: ${passed} passed, ${failed} failed`);
 console.log('========================================\n');

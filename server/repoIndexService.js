@@ -41,7 +41,7 @@ export class RepoIndexService {
 
     try {
       metadata = await githubApi.getRepoMetadata(owner, repo, token);
-      latestCommit = await githubApi.getLatestCommit(owner, repo, token);
+      latestCommit = await githubApi.getLatestCommit(owner, repo, token).catch(() => null);
       headSha = latestCommit?.sha || metadata?.default_branch || 'HEAD';
 
       const cached = db.getIndexCache(fullName, headSha);
