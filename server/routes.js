@@ -64,9 +64,100 @@ export async function handleAiApiRequest(req, res) {
   const method = req.method.toUpperCase();
 
   try {
+    // =========================================================================
+    // GitHub Centralized Authentication, Rate Limits & Endpoints
+    // =========================================================================
+
+    // A. Validate Token / Authentication Status
+    if (pathname === '/api/github/status' && method === 'GET') {
+      const forceRefresh = urlObj.searchParams.get('refresh') === 'true';
+      const status = await githubApi.validateStatus(forceRefresh);
+      return sendJson(res, 200, status);
+    }
+
+    // B. Quick Rate Limit Status Check
+    if (pathname === '/api/github/rate-limit' && method === 'GET') {
+      const status = await githubApi.validateStatus(false);
+      return sendJson(res, 200, status.rateLimit || { limit: 5000, remaining: 5000, resetDate: 'N/A' });
+    }
+
+    // C. Repository Metadata
+    if (pathname === '/api/github/repo' && method === 'GET') {
+      const repoParam = urlObj.searchParams.get('repo');
+      if (!repoParam) {
+        return sendJson(res, 400, { error: 'Repository is required (e.g. ?repo=owner/name)', code: 'VALIDATION_ERROR' });
+      }
+      const { owner, repo } = parseAndValidateRepo(repoParam);
+      const data = await githubApi.getRepoMetadata(owner, repo);
+      return sendJson(res, 200, data);
+    }
+
+    // D. Commit History (Paginated)
+    if (pathname === '/api/github/commits' && method === 'GET') {
+      const repoParam = urlObj.searchParams.get('repo');
+      if (!repoParam) {
+        return sendJson(res, 400, { error: 'Repository is required', code: 'VALIDATION_ERROR' });
+      }
+      const perPage = parseInt(urlObj.searchParams.get('per_page') || '100', 10);
+      const page = parseInt(urlObj.searchParams.get('page') || '1', 10);
+      const { owner, repo } = parseAndValidateRepo(repoParam);
+      const commits = await githubApi.getCommits(owner, repo, perPage, page);
+      return sendJson(res, 200, commits);
+    }
+
+    // E. Commit Details (with changed files)
+    if (pathname === '/api/github/commit-details' && method === 'GET') {
+      const repoParam = urlObj.searchParams.get('repo');
+      const sha = urlObj.searchParams.get('sha');
+      if (!repoParam || !sha) {
+        return sendJson(res, 400, { error: 'Repository and sha are required', code: 'VALIDATION_ERROR' });
+      }
+      const { owner, repo } = parseAndValidateRepo(repoParam);
+      const details = await githubApi.getCommitDetails(owner, repo, sha);
+      return sendJson(res, 200, details);
+    }
+
+    // F. Releases
+    if (pathname === '/api/github/releases' && method === 'GET') {
+      const repoParam = urlObj.searchParams.get('repo');
+      if (!repoParam) {
+        return sendJson(res, 400, { error: 'Repository is required', code: 'VALIDATION_ERROR' });
+      }
+      const { owner, repo } = parseAndValidateRepo(repoParam);
+      const releases = await githubApi.getReleases(owner, repo);
+      return sendJson(res, 200, releases);
+    }
+
+    // G. Aggregated Timeline Data (Meta + Commits + Releases)
+    if (pathname === '/api/github/timeline' && method === 'GET') {
+      const repoParam = urlObj.searchParams.get('repo');
+      if (!repoParam) {
+        return sendJson(res, 400, { error: 'Repository is required', code: 'VALIDATION_ERROR' });
+      }
+      const { owner, repo } = parseAndValidateRepo(repoParam);
+      const timelineData = await githubApi.getTimelineData(owner, repo);
+      return sendJson(res, 200, timelineData);
+    }
+
+    // H. Aggregated Collaborator Analytics (Normalized contributors & directories)
+    if (pathname === '/api/github/collaborators' && method === 'GET') {
+      const repoParam = urlObj.searchParams.get('repo');
+      if (!repoParam) {
+        return sendJson(res, 400, { error: 'Repository is required', code: 'VALIDATION_ERROR' });
+      }
+      const maxCommits = parseInt(urlObj.searchParams.get('max_commits') || '100', 10);
+      const maxDetails = parseInt(urlObj.searchParams.get('max_details') || '40', 10);
+      const { owner, repo } = parseAndValidateRepo(repoParam);
+      const analytics = await githubApi.getCollaboratorAnalytics(owner, repo, { maxCommits, maxDetails });
+      return sendJson(res, 200, analytics);
+    }
+
     // 1. Health check & model availability
     if (pathname === '/api/ai/health' && method === 'GET') {
-      const modelCheck = await GroqService.verifyModelAvailability();
+      const [modelCheck, githubStatus] = await Promise.all([
+        GroqService.verifyModelAvailability(),
+        githubApi.validateStatus(false),
+      ]);
       return sendJson(res, 200, {
         status: 'ok',
         groqConfigured: Boolean(config.GROQ.API_KEY),
@@ -74,6 +165,12 @@ export async function handleAiApiRequest(req, res) {
         modelVerified: modelCheck.available,
         modelDetails: modelCheck,
         githubConfigured: Boolean(config.GITHUB.TOKEN),
+        githubStatus: {
+          mode: githubStatus.mode,
+          isValid: githubStatus.isValid,
+          username: githubStatus.username || null,
+          rateLimit: githubStatus.rateLimit || null,
+        },
       });
     }
 

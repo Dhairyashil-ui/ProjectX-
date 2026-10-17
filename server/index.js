@@ -10,7 +10,7 @@ export function gitStoryAiBackendPlugin() {
     name: 'gitstory-ai-backend',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (req.url && req.url.startsWith('/api/ai')) {
+        if (req.url && req.url.startsWith('/api/')) {
           try {
             await handleAiApiRequest(req, res);
           } catch (err) {
@@ -22,7 +22,7 @@ export function gitStoryAiBackendPlugin() {
           next();
         }
       });
-      console.log(`[GitStory AI Backend] Mounted /api/ai endpoints on Vite server with model: ${config.GROQ.MODEL}`);
+      console.log(`[GitStory Backend] Mounted /api endpoints on Vite server with model: ${config.GROQ.MODEL}`);
     },
   };
 }
@@ -42,7 +42,7 @@ export function startStandaloneServer(port = 3001) {
       return res.end();
     }
 
-    if (req.url && req.url.startsWith('/api/ai')) {
+    if (req.url && req.url.startsWith('/api/')) {
       await handleAiApiRequest(req, res);
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });

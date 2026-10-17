@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/Vercel-Serverless-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" />
   <img src="https://img.shields.io/badge/Node.js-ESM_Engine-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/Tests-49_Passed-2ea44f?style=for-the-badge&logo=githubactions&logoColor=white" alt="Tests 49 Passed" />
+  <img src="https://img.shields.io/badge/Tests-60_Passed-2ea44f?style=for-the-badge&logo=githubactions&logoColor=white" alt="Tests 60 Passed" />
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License" />
 </p>
 
@@ -160,11 +160,25 @@ Chronological timelines often suffer from visual badge overlap during high-densi
 
 ## 📡 Serverless API Reference
 
-All AI, indexing, and chat endpoints are unified under `/api/ai/*` and deployed via Vercel Serverless Functions:
+All features communicate through centralized Vercel Serverless Functions (`/api/*`), ensuring zero token leakage to browser bundles, transparent ETag caching, request deduplication, and rate-limit preservation.
 
+### 🐙 Centralized GitHub Engine (`/api/github/*`)
 | Method | Endpoint | Description |
 | :---: | :--- | :--- |
-| `GET` | `/api/ai/health` | Healthcheck verifying Groq LPU availability and GitHub API status |
+| `GET` | `/api/github/status` | Validates configured token via `GET /user`, reports user login, and remaining rate limit |
+| `GET` | `/api/github/rate-limit` | Quick quota check (`limit`, `remaining`, `resetDate`) |
+| `GET` | `/api/github/repo?repo=:owner/:repo` | Cached repository metadata (`stars`, `forks`, `defaultBranch`) |
+| `GET` | `/api/github/commits?repo=:owner/:repo` | Paginated commit list (`per_page=100`) with in-flight deduplication |
+| `GET` | `/api/github/commit-details?repo=:owner/:repo&sha=:sha` | Immutable changed files, additions, and deletions for a specific commit |
+| `GET` | `/api/github/releases?repo=:owner/:repo` | Published GitHub releases and milestone tags |
+| `GET` | `/api/github/tree?repo=:owner/:repo&sha=:sha` | Recursive git tree structure for repository baseline |
+| `GET` | `/api/github/timeline?repo=:owner/:repo` | Aggregated timeline payload (metadata + commits + releases) |
+| `GET` | `/api/github/collaborators?repo=:owner/:repo` | Server-side aggregated collaborator stats, directory shares, and Bus Factor metrics |
+
+### 🤖 AI & Q&A Engine (`/api/ai/*`)
+| Method | Endpoint | Description |
+| :---: | :--- | :--- |
+| `GET` | `/api/ai/health` | Healthcheck verifying Groq LPU availability and GitHub server status |
 | `POST` | `/api/ai/config` | Dynamic runtime configuration for custom Groq API keys and model overrides |
 | `GET` | `/api/ai/conversations` | List conversation sessions filtered by repository |
 | `POST` | `/api/ai/conversations` | Initialize a new conversational thread for a repository |
@@ -177,9 +191,23 @@ All AI, indexing, and chat endpoints are unified under `/api/ai/*` and deployed 
 
 ---
 
+## 🔒 Enterprise Authentication & Production Scaling Evaluation
+
+In accordance with GitHub Security Best Practices, GitStory AI enforces a strict zero-trust credential architecture:
+
+1. **Server-Side Credential Boundary**: Personal Access Tokens (PATs) and OAuth secrets **never** enter browser bundles, client state, `localStorage`, or API response payloads.
+2. **Graceful Public Fallback**: Public repositories are accessible to all visitors without requiring personal tokens, utilizing the application's authenticated server-side pool and in-memory caches.
+3. **Production Scaling Architecture: GitHub Apps vs. GitHub OAuth vs. PATs**:
+   - **For Hackathons / Demos (Current)**: Centralized server-side `GITHUB_TOKEN` environment variable with in-memory TTL caching, ETag conditional requests (`304 Not Modified`), and concurrency-limited batching.
+   - **For Production Multi-Tenant Deployments**:
+     - **GitHub App (Recommended for Organizations)**: Offers up to **12,500 requests/hour** per installation. Runs on short-lived installation access tokens (expiring every 60 minutes) rather than static credentials, with fine-grained read-only repository permissions (`Repository contents: Read`).
+     - **GitHub OAuth Web Flow (Recommended for Individual Users)**: Allows each visiting developer to authenticate with their own GitHub identity. Users grant minimal read scope (`read:user`, `public_repo`), allocating 5,000 requests/hour individually to each user and avoiding shared rate-limit depletion.
+
+---
+
 ## 🧪 Comprehensive Automated Test Suites
 
-The repository contains **49 automated unit tests** verifying data integrity, parser safety, and algorithmic accuracy:
+The repository contains **60 automated unit tests** verifying data integrity, parser safety, authentication hygiene, and algorithmic accuracy:
 
 ```bash
 npm test
@@ -189,6 +217,7 @@ npm test
 - **Repository Validation (`repoValidation.test.mjs`)**: 32 unit tests validating URL formats, path segment encoding, query parameter handling, and rejection of prompt injection strings.
 - **Collaborator Analytics (`collaboratorAnalytics.test.mjs`)**: 9 unit tests verifying author normalization, bot filtering, HHI calculation, and temporal bucketing.
 - **Co-Change Analytics (`coChangeAnalytics.test.mjs`)**: 8 unit tests validating pair generation, Jaccard coefficients, and community clustering.
+- **GitHub Auth & Caching (`githubAuthAndCaching.test.mjs`)**: 11 unit tests verifying token validation via `GET /user`, fast failure on invalid tokens without retry loops, in-flight request deduplication, in-memory caching, ETag handling, and concurrency limiting.
 
 ---
 
@@ -198,7 +227,7 @@ npm test
 - **Node.js**: v18.0.0 or higher
 - **npm**: v9.0.0 or higher
 - *(Optional)* **Groq API Key**: For AI Q&A features ([console.groq.com](https://console.groq.com/))
-- *(Optional)* **GitHub Personal Access Token**: For high rate limits ([github.com/settings/tokens](https://github.com/settings/tokens))
+- *(Optional)* **GitHub Personal Access Token**: For authenticated backend requests ([github.com/settings/tokens](https://github.com/settings/tokens))
 
 ### 1. Clone the Repository
 ```bash
@@ -212,7 +241,11 @@ npm install
 ```
 
 ### 3. Environment Configuration
-Create a `.env` file in the root directory:
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+Provide your credentials in `.env`:
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 GITHUB_TOKEN=your_github_token_here

@@ -3,6 +3,7 @@ import {
   fetchRealRepositoryTimeline,
   fetchSelectedCommitDetails,
   parseRepoIdentifier,
+  fetchGitHubRateLimitStatus,
 } from '../services/githubTimelineService';
 
 export default function TimeTravelTimeline({ repo = 'facebook/react', onBack }) {
@@ -12,7 +13,7 @@ export default function TimeTravelTimeline({ repo = 'facebook/react', onBack }) 
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [isRateLimited, setIsRateLimited] = useState(false);
-  const [tokenInput, setTokenInput] = useState('');
+  const [rateLimitStatus, setRateLimitStatus] = useState(null);
   const [commitDetails, setCommitDetails] = useState({});
   const [graph3DTilt, setGraph3DTilt] = useState({ x: 0, y: 0 });
   const [hoveredBarIndex, setHoveredBarIndex] = useState(null);
@@ -32,6 +33,10 @@ export default function TimeTravelTimeline({ repo = 'facebook/react', onBack }) 
     setErrorDetails(null);
     setIsRateLimited(false);
     setIsPlaying(false);
+
+    fetchGitHubRateLimitStatus().then((st) => {
+      if (st) setRateLimitStatus(st);
+    });
 
     try {
       const data = await fetchRealRepositoryTimeline(repo);
@@ -57,6 +62,9 @@ export default function TimeTravelTimeline({ repo = 'facebook/react', onBack }) 
 
   useEffect(() => {
     loadRealTimeline();
+    fetchGitHubRateLimitStatus().then((st) => {
+      if (st) setRateLimitStatus(st);
+    });
   }, [repo]);
 
   const commits = timelineData?.commits || [];
@@ -159,15 +167,6 @@ export default function TimeTravelTimeline({ repo = 'facebook/react', onBack }) 
     setHoveredBarIndex(null);
   };
 
-  // Save personal access token
-  const handleSaveToken = (e) => {
-    e.preventDefault();
-    if (tokenInput.trim()) {
-      localStorage.setItem('github_token', tokenInput.trim());
-      setIsRateLimited(false);
-      window.location.reload();
-    }
-  };
 
   // Details for active commit
   const activeDetails = selectedCommit?.sha ? commitDetails[selectedCommit.sha] : null;
@@ -225,27 +224,20 @@ export default function TimeTravelTimeline({ repo = 'facebook/react', onBack }) 
             <i className="bi bi-shield-exclamation text-amber me-2"></i>
             <span>GitHub API Rate Limit Reached</span>
           </div>
-          <h3 className="timeline-loading-title">Public API Limit Reached (60 req/hr)</h3>
+          <h3 className="timeline-loading-title">API Rate Limit Throttled</h3>
           <p className="timeline-loading-subtitle">
-            GitHub restricts unauthenticated requests per IP address. Provide an optional personal GitHub token for 5,000 requests/hr.
+            {errorMessage || 'GitHub API rate limit exceeded. Requests are cached server-side.'}
           </p>
-          <form className="token-input-form" onSubmit={handleSaveToken}>
-            <input 
-              type="password"
-              className="token-text-input"
-              placeholder="Paste GitHub Token (ghp_... or github_pat_...)"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-            />
-            <button type="submit" className="token-submit-btn">
-              Apply Token & Retry
+          <div className="d-flex gap-2 justify-content-center mt-3">
+            <button type="button" className="apple-hub-return-btn" onClick={loadRealTimeline}>
+              Retry Connection
             </button>
-          </form>
-          {onBack && (
-            <button type="button" className="apple-hub-return-btn mt-3" onClick={onBack}>
-              ← Return to 3D Hub
-            </button>
-          )}
+            {onBack && (
+              <button type="button" className="apple-hub-return-btn" onClick={onBack}>
+                ← Return to 3D Hub
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -261,33 +253,13 @@ export default function TimeTravelTimeline({ repo = 'facebook/react', onBack }) 
           <div className="error-icon-pill danger mb-3">
             <i className="bi bi-key-fill text-danger" style={{ fontSize: '32px' }}></i>
           </div>
-          <h3 className="timeline-loading-title">GitHub Authentication Failed (401)</h3>
+          <h3 className="timeline-loading-title">Server Token Authentication Failed (401)</h3>
           <p className="timeline-loading-subtitle">
-            {errorMessage || 'The stored GitHub token is invalid, expired, or has insufficient scopes.'}
+            {errorMessage || 'The server-configured GITHUB_TOKEN is invalid or has expired. Please check your .env file on the server.'}
           </p>
-          <form className="token-input-form mt-3" onSubmit={handleSaveToken}>
-            <input 
-              type="password"
-              className="token-text-input"
-              placeholder="Update GitHub Token"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-            />
-            <button type="submit" className="token-submit-btn">
-              Update Token
-            </button>
-          </form>
           <div className="d-flex gap-2 justify-content-center mt-3">
-            <button 
-              type="button" 
-              className="apple-hub-return-btn" 
-              onClick={() => {
-                localStorage.removeItem('github_token');
-                setTokenInput('');
-                loadRealTimeline();
-              }}
-            >
-              Clear Stored Token
+            <button type="button" className="apple-hub-return-btn" onClick={loadRealTimeline}>
+              Retry After Updating .env
             </button>
             {onBack && (
               <button type="button" className="apple-hub-return-btn" onClick={onBack}>
@@ -449,6 +421,22 @@ export default function TimeTravelTimeline({ repo = 'facebook/react', onBack }) 
               <span className="public-repo-dot"></span>
               <span>{timelineData.meta.isPrivate ? 'Private Repository' : 'Public Repository'}</span>
             </span>
+
+            {rateLimitStatus && (
+              <span 
+                className="public-repo-pill" 
+                style={{
+                  borderColor: rateLimitStatus.isValid ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)',
+                  background: rateLimitStatus.isValid ? 'rgba(16, 185, 129, 0.05)' : 'rgba(245, 158, 11, 0.05)'
+                }}
+                title={rateLimitStatus.isValid ? `Authenticated as @${rateLimitStatus.username}. Limit resets at ${rateLimitStatus.rateLimit?.resetDate}.` : (rateLimitStatus.message || 'Operating in public rate-limited mode')}
+              >
+                <i className={`bi ${rateLimitStatus.isValid ? 'bi-shield-check text-success' : 'bi-shield-exclamation text-warning'} me-1`}></i>
+                {rateLimitStatus.isValid 
+                  ? `@${rateLimitStatus.username} (${rateLimitStatus.rateLimit?.remaining ?? 5000} req left)` 
+                  : 'Public Mode (60 req/hr)'}
+              </span>
+            )}
           </div>
 
           <div className="timeline-top-right">

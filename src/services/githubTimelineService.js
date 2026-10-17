@@ -185,72 +185,111 @@ export function parseRepoIdentifier(repoInput) {
 export const BACKUP_GITHUB_PAT = '';
 
 /**
- * Returns GitHub headers for a given token or fallback.
+ * Maps GitHub API URLs to our centralized backend serverless proxy (/api/github/*)
+ * so tokens are never exposed in browser bundles, localStorage, or network tabs.
  */
-export function getGitHubHeaders(tokenOverride = null) {
-  const headers = {
-    Accept: 'application/vnd.github.v3+json',
-  };
-  let token = tokenOverride;
-  if (!token) {
-    try {
-      token = localStorage.getItem('github_token') || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GITHUB_TOKEN);
-    } catch (e) {
-      // ignore
+export function mapGitHubUrlToBackendProxy(url) {
+  if (typeof url !== 'string' || !url.startsWith('https://api.github.com')) {
+    return url;
+  }
+  try {
+    const parsed = new URL(url);
+    const p = parsed.pathname;
+
+    // 1. Commit Details: /repos/:owner/:repo/commits/:sha
+    const commitDetailMatch = p.match(/^\/repos\/([^/]+)\/([^/]+)\/commits\/([a-f0-9]+)$/i);
+    if (commitDetailMatch) {
+      return `/api/github/commit-details?repo=${encodeURIComponent(commitDetailMatch[1])}/${encodeURIComponent(commitDetailMatch[2])}&sha=${commitDetailMatch[3]}`;
     }
-  }
 
-  // Fallback to verified PAT if stored token is absent or empty
-  if (!token || !token.trim()) {
-    token = BACKUP_GITHUB_PAT;
-  }
+    // 2. Commits List: /repos/:owner/:repo/commits
+    const commitsMatch = p.match(/^\/repos\/([^/]+)\/([^/]+)\/commits$/i);
+    if (commitsMatch) {
+      const perPage = parsed.searchParams.get('per_page') || '100';
+      const page = parsed.searchParams.get('page') || '1';
+      return `/api/github/commits?repo=${encodeURIComponent(commitsMatch[1])}/${encodeURIComponent(commitsMatch[2])}&per_page=${perPage}&page=${page}`;
+    }
 
-  if (token && typeof token === 'string' && token.trim()) {
-    headers.Authorization = `token ${token.trim()}`;
+    // 3. Releases: /repos/:owner/:repo/releases
+    const releasesMatch = p.match(/^\/repos\/([^/]+)\/([^/]+)\/releases$/i);
+    if (releasesMatch) {
+      return `/api/github/releases?repo=${encodeURIComponent(releasesMatch[1])}/${encodeURIComponent(releasesMatch[2])}`;
+    }
+
+    // 4. Tags: /repos/:owner/:repo/tags
+    const tagsMatch = p.match(/^\/repos\/([^/]+)\/([^/]+)\/tags$/i);
+    if (tagsMatch) {
+      return `/api/github/releases?repo=${encodeURIComponent(tagsMatch[1])}/${encodeURIComponent(tagsMatch[2])}`;
+    }
+
+    // 5. Tree: /repos/:owner/:repo/git/trees/:sha
+    const treeMatch = p.match(/^\/repos\/([^/]+)\/([^/]+)\/git\/trees\/([a-f0-9]+)$/i);
+    if (treeMatch) {
+      return `/api/github/tree?repo=${encodeURIComponent(treeMatch[1])}/${encodeURIComponent(treeMatch[2])}&sha=${treeMatch[3]}`;
+    }
+
+    // 6. Repo Meta: /repos/:owner/:repo
+    const repoMatch = p.match(/^\/repos\/([^/]+)\/([^/]+)$/i);
+    if (repoMatch) {
+      return `/api/github/repo?repo=${encodeURIComponent(repoMatch[1])}/${encodeURIComponent(repoMatch[2])}`;
+    }
+  } catch {
+    // Fallback to direct url
   }
-  return headers;
+  return url;
 }
 
 /**
- * Intelligent GitHub Fetcher:
- * Tries with the user's previously provided token (from localStorage or env) first.
- * If AND ONLY IF that previous token is expired (401) or rate-limited (403),
- * it seamlessly switches to BACKUP_GITHUB_PAT and retries the request!
+ * Returns clean standard headers without client-side credentials.
+ */
+export function getGitHubHeaders() {
+  return {
+    Accept: 'application/vnd.github.v3+json',
+  };
+}
+
+/**
+ * Centralized GitHub Fetcher:
+ * Automatically routes through the secure backend /api/github endpoints,
+ * utilizing the server's configured GITHUB_TOKEN and server-side cache.
+ * If backend is unreachable (e.g. unit tests), falls back to direct public GitHub requests.
  */
 export async function fetchGitHubWithFallback(url, options = {}) {
-  let primaryToken = null;
-  try {
-    primaryToken = localStorage.getItem('github_token') || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GITHUB_TOKEN);
-  } catch (e) {}
+  const isBrowser = typeof window !== 'undefined';
+  const proxyUrl = isBrowser ? mapGitHubUrlToBackendProxy(url) : url;
 
-  const hasPrimaryToken = Boolean(primaryToken && typeof primaryToken === 'string' && primaryToken.trim() && primaryToken.trim() !== BACKUP_GITHUB_PAT);
-
-  if (hasPrimaryToken) {
-    const primaryHeaders = {
-      Accept: 'application/vnd.github.v3+json',
-      Authorization: `token ${primaryToken.trim()}`,
-      ...(options.headers || {}),
-    };
+  if (isBrowser && proxyUrl !== url) {
     try {
-      const res = await fetch(url, { ...options, headers: primaryHeaders });
-      // If 401 Unauthorized (expired/invalid) or 403 (rate limited), fall back to backup PAT
-      if (res.status === 401 || res.status === 403) {
-        console.warn(`[GitHubAuth] Primary token failed with status ${res.status}. Falling back to verified PAT...`);
-      } else {
+      const res = await fetch(proxyUrl, options);
+      if (res.ok || res.status === 401 || res.status === 403 || res.status === 404) {
         return res;
       }
-    } catch (netErr) {
-      console.warn('[GitHubAuth] Primary request network error, trying fallback PAT:', netErr.message);
+    } catch (proxyErr) {
+      console.warn('[GitHubProxy] Backend proxy unavailable, using direct public request:', proxyErr.message);
     }
   }
 
-  // Use verified fallback PAT
-  const fallbackHeaders = {
+  // Fallback to direct public GitHub request without client credentials
+  const cleanHeaders = {
     Accept: 'application/vnd.github.v3+json',
-    Authorization: `token ${BACKUP_GITHUB_PAT}`,
     ...(options.headers || {}),
   };
-  return fetch(url, { ...options, headers: fallbackHeaders });
+  return fetch(url, { ...options, headers: cleanHeaders });
+}
+
+/**
+ * Fetches real-time rate-limit and authentication status from the backend
+ */
+export async function fetchGitHubRateLimitStatus() {
+  try {
+    const res = await fetch('/api/github/status');
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Fallback
+  }
+  return null;
 }
 
 /**

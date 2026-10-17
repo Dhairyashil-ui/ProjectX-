@@ -3,7 +3,7 @@ import {
   fetchCollaboratorAnalytics,
   filterCollaboratorAnalytics,
 } from '../services/collaboratorAnalyticsService';
-import { parseRepoIdentifier } from '../services/githubTimelineService';
+import { parseRepoIdentifier, fetchGitHubRateLimitStatus } from '../services/githubTimelineService';
 
 export default function ExploreCollaborators({ repo = 'facebook/react', onBack }) {
   const [rawData, setRawData] = useState(null);
@@ -11,7 +11,7 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
   const [loadingProgress, setLoadingProgress] = useState({ phase: 'starting', loaded: 0, total: 100 });
   const [errorMessage, setErrorMessage] = useState(null);
   const [errorType, setErrorType] = useState(null);
-  const [tokenInput, setTokenInput] = useState('');
+  const [rateLimitStatus, setRateLimitStatus] = useState(null);
 
   // Active Tab: 'directories' | 'activity' | 'matrix'
   const [activeTab, setActiveTab] = useState('directories');
@@ -62,16 +62,10 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
 
   useEffect(() => {
     loadData();
+    fetchGitHubRateLimitStatus().then((st) => {
+      if (st) setRateLimitStatus(st);
+    });
   }, [repo]);
-
-  // Save personal access token
-  const handleSaveToken = (e) => {
-    e.preventDefault();
-    if (tokenInput.trim()) {
-      localStorage.setItem('github_token', tokenInput.trim());
-      loadData(true);
-    }
-  };
 
   // 2. Compute Date Range from Preset
   const dateRangeBounds = useMemo(() => {
@@ -182,8 +176,35 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
   }
 
   // ---------------------------------------------------------------------------
-  // RENDER: ERROR / RATE LIMIT STATE
+  // RENDER: ERROR / RATE LIMIT / AUTH STATE
   // ---------------------------------------------------------------------------
+  if (errorType === 'UNAUTHORIZED') {
+    return (
+      <div className="apple-minimal-stage">
+        <div className="repo-timeline-clean-card timeline-error-card">
+          <div className="rate-limit-badge" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+            <i className="bi bi-key-fill me-2"></i>
+            <span>GitHub Authentication Error (401)</span>
+          </div>
+          <h3 className="timeline-loading-title">Server Token Configuration Required</h3>
+          <p className="timeline-loading-subtitle">
+            {errorMessage || 'The server-side GITHUB_TOKEN is invalid or has expired. Please update GITHUB_TOKEN in your server .env file.'}
+          </p>
+          <div className="d-flex gap-2 justify-content-center mt-3">
+            <button type="button" className="apple-hub-return-btn" onClick={() => loadData(true)}>
+              Retry Connection
+            </button>
+            {onBack && (
+              <button type="button" className="apple-hub-return-btn" onClick={onBack}>
+                ← Return to 3D Hub
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (errorType === 'RATE_LIMIT') {
     return (
       <div className="apple-minimal-stage">
@@ -192,27 +213,20 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
             <i className="bi bi-shield-exclamation text-amber me-2"></i>
             <span>GitHub API Rate Limit Reached</span>
           </div>
-          <h3 className="timeline-loading-title">Public API Limit Reached (60 req/hr)</h3>
+          <h3 className="timeline-loading-title">API Rate Limit Throttled</h3>
           <p className="timeline-loading-subtitle">
-            GitHub limits unauthenticated REST requests. Provide a personal GitHub token to increase your limit to 5,000 requests/hr.
+            {errorMessage || 'GitHub API rate limit reached. All responses are securely cached server-side.'}
           </p>
-          <form className="token-input-form" onSubmit={handleSaveToken}>
-            <input 
-              type="password"
-              className="token-text-input"
-              placeholder="Paste GitHub Token (ghp_... or github_pat_...)"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-            />
-            <button type="submit" className="token-submit-btn">
-              Apply Token & Retry
+          <div className="d-flex gap-2 justify-content-center mt-3">
+            <button type="button" className="apple-hub-return-btn" onClick={() => loadData(true)}>
+              Retry
             </button>
-          </form>
-          {onBack && (
-            <button type="button" className="apple-hub-return-btn mt-3" onClick={onBack}>
-              ← Return to 3D Hub
-            </button>
-          )}
+            {onBack && (
+              <button type="button" className="apple-hub-return-btn" onClick={onBack}>
+                ← Return to 3D Hub
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -284,6 +298,22 @@ export default function ExploreCollaborators({ repo = 'facebook/react', onBack }
           <span className="code-live-dot" title="Grounded in real GitHub commit history">
             <span className="pulse-pink-dot" style={{ background: '#10b981' }}></span> Real GitHub Data
           </span>
+
+          {rateLimitStatus && (
+            <span 
+              className="code-live-dot" 
+              style={{
+                borderColor: rateLimitStatus.isValid ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)',
+                background: rateLimitStatus.isValid ? 'rgba(16, 185, 129, 0.05)' : 'rgba(245, 158, 11, 0.05)'
+              }}
+              title={rateLimitStatus.isValid ? `Authenticated as @${rateLimitStatus.username}. Limit resets at ${rateLimitStatus.rateLimit?.resetDate}.` : (rateLimitStatus.message || 'Operating in public rate-limited mode')}
+            >
+              <i className={`bi ${rateLimitStatus.isValid ? 'bi-shield-check text-success' : 'bi-shield-exclamation text-warning'} me-1`}></i>
+              {rateLimitStatus.isValid 
+                ? `@${rateLimitStatus.username} (${rateLimitStatus.rateLimit?.remaining ?? 5000} req left)` 
+                : 'Public Mode (60 req/hr)'}
+            </span>
+          )}
         </div>
 
         <div className="d-flex align-items-center gap-2">

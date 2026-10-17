@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/repoValidation.test.mjs && node tests/collaboratorAnalytics.test.mjs && node tests/coChangeAnalytics.test.mjs"
+    "test": "node tests/repoValidation.test.mjs && node tests/collaboratorAnalytics.test.mjs && node tests/coChangeAnalytics.test.mjs && node tests/githubAuthAndCaching.test.mjs"
   },
   "allowScripts": {
     "esbuild": true

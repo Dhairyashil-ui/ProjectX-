@@ -3,7 +3,7 @@ import {
   fetchCoChangeAnalytics,
   filterCoChangeGraph,
 } from '../services/coChangeAnalyticsService';
-import { parseRepoIdentifier } from '../services/githubTimelineService';
+import { parseRepoIdentifier, fetchGitHubRateLimitStatus } from '../services/githubTimelineService';
 
 export default function ExploreCode({ repo = 'facebook/react', onBack }) {
   const [rawGraphData, setRawGraphData] = useState(null);
@@ -11,7 +11,7 @@ export default function ExploreCode({ repo = 'facebook/react', onBack }) {
   const [loadingProgress, setLoadingProgress] = useState({ phase: 'starting', loaded: 0, total: 100 });
   const [errorMessage, setErrorMessage] = useState(null);
   const [errorType, setErrorType] = useState(null);
-  const [tokenInput, setTokenInput] = useState('');
+  const [rateLimitStatus, setRateLimitStatus] = useState(null);
 
   // Active view tab: 'graph' | 'clusters' | 'activity'
   const [activeTab, setActiveTab] = useState('graph');
@@ -67,15 +67,10 @@ export default function ExploreCode({ repo = 'facebook/react', onBack }) {
 
   useEffect(() => {
     loadData();
+    fetchGitHubRateLimitStatus().then((st) => {
+      if (st) setRateLimitStatus(st);
+    });
   }, [repo, excludeBroadCommits]);
-
-  const handleSaveToken = (e) => {
-    e.preventDefault();
-    if (tokenInput.trim()) {
-      localStorage.setItem('github_token', tokenInput.trim());
-      loadData(true);
-    }
-  };
 
   // 2. Compute Filtered Graph
   const filteredGraph = useMemo(() => {
@@ -303,24 +298,21 @@ export default function ExploreCode({ repo = 'facebook/react', onBack }) {
           <h3 className="h4 fw-bold text-dark mb-2">Unable to Analyze Code Relationships</h3>
           <p className="text-secondary max-w-md mx-auto mb-4">{errorMessage}</p>
 
-          {errorType === 'RATE_LIMIT' && (
-            <div className="rate-limit-token-form max-w-md mx-auto p-4 border rounded bg-light mb-4">
-              <h5 className="fw-semibold fs-6 mb-2">GitHub API Rate Limit Reached</h5>
-              <p className="small text-muted mb-3">
-                GitHub permits 60 requests/hour unauthenticated. Enter a personal access token for 5,000 requests/hour.
+          {errorType === 'UNAUTHORIZED' && (
+            <div className="rate-limit-token-form max-w-md mx-auto p-4 border rounded bg-light mb-4 text-start">
+              <h5 className="fw-semibold fs-6 mb-2 text-danger">Server Authentication Required (401)</h5>
+              <p className="small text-muted mb-0">
+                The server's configured GITHUB_TOKEN is invalid or has expired. Please update GITHUB_TOKEN in your server .env file.
               </p>
-              <form onSubmit={handleSaveToken} className="d-flex gap-2">
-                <input
-                  type="password"
-                  className="form-control form-control-sm font-monospace"
-                  placeholder="ghp_..."
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                />
-                <button type="submit" className="apple-action-btn-clean py-1 px-3">
-                  Save
-                </button>
-              </form>
+            </div>
+          )}
+
+          {errorType === 'RATE_LIMIT' && (
+            <div className="rate-limit-token-form max-w-md mx-auto p-4 border rounded bg-light mb-4 text-start">
+              <h5 className="fw-semibold fs-6 mb-2 text-amber">GitHub API Rate Limit Reached</h5>
+              <p className="small text-muted mb-0">
+                All requests are securely cached server-side. Please wait for the hourly window reset to continue.
+              </p>
             </div>
           )}
 
@@ -372,6 +364,22 @@ export default function ExploreCode({ repo = 'facebook/react', onBack }) {
           <span className="code-live-dot" title="Grounded in real GitHub co-change history">
             <span className="pulse-pink-dot"></span> Real Co-Changes
           </span>
+
+          {rateLimitStatus && (
+            <span 
+              className="code-live-dot" 
+              style={{
+                borderColor: rateLimitStatus.isValid ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)',
+                background: rateLimitStatus.isValid ? 'rgba(16, 185, 129, 0.05)' : 'rgba(245, 158, 11, 0.05)'
+              }}
+              title={rateLimitStatus.isValid ? `Authenticated as @${rateLimitStatus.username}. Limit resets at ${rateLimitStatus.rateLimit?.resetDate}.` : (rateLimitStatus.message || 'Operating in public rate-limited mode')}
+            >
+              <i className={`bi ${rateLimitStatus.isValid ? 'bi-shield-check text-success' : 'bi-shield-exclamation text-warning'} me-1`}></i>
+              {rateLimitStatus.isValid 
+                ? `@${rateLimitStatus.username} (${rateLimitStatus.rateLimit?.remaining ?? 5000} req left)` 
+                : 'Public Mode (60 req/hr)'}
+            </span>
+          )}
         </div>
 
         <div className="d-flex align-items-center gap-2">
